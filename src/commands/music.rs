@@ -1,8 +1,9 @@
 use crate::Error;
-
-use humantime::format_duration;
+use humantime::{format_duration, Duration};
 use std::sync::Arc;
 use async_trait::async_trait;
+use std::time::Duration as STDD;
+use std::path::Path;
 
 use crate::commands::utils;
 use poise::serenity_prelude::GuildId;
@@ -10,7 +11,7 @@ use songbird::{
     input::{Input,ffmpeg as sf},
     Event, EventContext, EventHandler as VoiceEventHandler, Songbird, TrackEvent,
 };
-
+use tokio::time::{sleep, Duration as TD};
 
 
 /// Play music with given url.
@@ -66,14 +67,31 @@ pub async fn play(ctx: poise::Context<'_, (), Error>, #[description= "url"] url:
     println!("[*] Handling -> {url}");
 
     
-    let source = utils::get_youtube_source(url.clone()).unwrap();
+    let (source,music_path) = utils::build_songbird_source(url.clone()).await.unwrap();
     let metadata = source.metadata.clone();
 
     // let source2 = utils::get_youtube_source(url).unwrap();
-    let fsource = sf(r"data\金莎 - 愛的魔法『她們說你有點壞，追你的女生都很傷心。』【動態歌詞Lyrics】 [8EIeK68l0VU].opus").await.unwrap_or(source);
-    // println!("[*] Handling success!!");
-    let mut handle = conn.lock().await.enqueue_source(fsource);//.enqueue_source(source);
+    let source_result = sf(&music_path).await;
+
+    println!("[*] {music_path} exist : {}",Path::new(&music_path).exists());
+    let fsource = match source_result {
+        Ok(fsource) => {
+            println!("[*] use downloaded source!!");
+            fsource
+        }
+        Err(_) => {
+            println!("[*] use yt source!!");
+            source
+        }
+    };
+    let mut handle = conn.lock().await.enqueue_source(fsource);//.enqueue_source(fsource);//.enqueue_source(source);
     
+    
+    // let sleep = sleep(TD::from_secs(10));
+    // tokio::pin!(sleep);
+    // sleep.as_mut().await;
+
+
     let _ = handle.add_event(
         Event::Track(TrackEvent::End),
         EndLeaver { manager, guild_id },
@@ -82,9 +100,6 @@ pub async fn play(ctx: poise::Context<'_, (), Error>, #[description= "url"] url:
     // handle.stop();
 	// handle.play_only_source(source);
     // handle.enqueue_source(source);
-    // handle.enqueue_source(source);
-
-    
 
     // handle.
 
