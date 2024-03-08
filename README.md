@@ -1,6 +1,6 @@
 <p align="center">
   <a href="" rel="noopener">
- <img width=200px height=200px src="https://github.com/OuYangMinOa/OuYangMinOa-Xiao-Xia-rust/tree/main/icon.png" alt="Bot logo"></a>
+ <img width=200px height=200px src="https://github.com/OuYangMinOa/OuYangMinOa-Xiao-Xia-rust/blob/main/icon.png" alt="Bot logo"></a>
 </p>
 
 <h3 align="center">Xiao-Xia with rust</h3>
