@@ -16,7 +16,6 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 async fn main() {
     // dotenv!("DISCORD_TOKEN")
 
-    let _a = 5;
     println!("[*] Waiting for server ready ... ");
     let private_server:u64 = dotenv!("TEST_GUILD_ID").parse::<u64>().expect("Can't use private server");
     let privateguidid :serenity::GuildId = serenity::GuildId(private_server);
