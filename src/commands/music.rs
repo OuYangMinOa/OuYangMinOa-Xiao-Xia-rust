@@ -1,31 +1,36 @@
 use crate::Error;
-use humantime::{format_duration, Duration};
+use humantime::format_duration;
 use std::sync::Arc;
 use async_trait::async_trait;
-use std::time::Duration as STDD;
 use std::path::Path;
 
 use crate::commands::utils;
 use poise::serenity_prelude::GuildId;
 use songbird::{
-    input::{Input,ffmpeg as sf},
+    Call,
+    input::ffmpeg as sf,
     Event, EventContext, EventHandler as VoiceEventHandler, Songbird, TrackEvent,
 };
-use tokio::time::{sleep, Duration as TD};
 
+use tokio::sync::Mutex;
+
+
+pub async fn get_conn(ctx: poise::Context<'_, (), Error>) -> Result<Arc<Mutex<Call>>,Error> {
+    let guild = ctx.guild().expect("[*] Can't grab guild");
+    let manager = songbird::get(ctx.serenity_context()).await.expect("[*] Can't grab manager");
+    let conn = manager.get(guild.id).expect("[*] Can't grab conn");
+    Ok(conn)
+}
 
 /// Play music with given url.
 #[poise::command(slash_command, reuse_response)]
 pub async fn play(ctx: poise::Context<'_, (), Error>, #[description= "url"] url:String) -> Result<(), Error> {
-    ctx.defer().await?;
 
-    let guild = ctx.guild().unwrap().clone();
+    ctx.defer().await?;
+    let guild   = ctx.guild().expect("[*] Grabbing guild error").clone();
     let userid = ctx.author().id;
     let voice_state_option = guild.voice_states.get(&userid);
     let voice_state ;
-
-    // m.embed(|e| e.title("Error").description("You are not in a voice channel"))
-
 
     // check if user in the voice channel
     match voice_state_option {
@@ -35,7 +40,7 @@ pub async fn play(ctx: poise::Context<'_, (), Error>, #[description= "url"] url:
             ctx.send(|m|
                 m.embed(
                     |e| e.title("Error").description("You are not in a voice channel")
-                )
+                ).ephemeral(true)
             ).await.unwrap();
             return Ok(());
         }
@@ -43,15 +48,16 @@ pub async fn play(ctx: poise::Context<'_, (), Error>, #[description= "url"] url:
 
 
     // grab chennel_id and guild_id
-    let channel_id = voice_state.channel_id.unwrap();
-    let guild_id = ctx.guild_id().unwrap();
+    let channel_id = voice_state.channel_id.expect("[*] Grabbing channel_id error");
+    let guild_id = ctx.guild_id().expect("[*] Grabbing guild_id error");
 
 
     println!("guild : {}, channel : {}, User : {}",guild_id,channel_id,userid);
     // ;
     let serenity_context = ctx.serenity_context();
-    let manager= songbird::get(serenity_context).await.unwrap();
-    
+    let manager= songbird::get(serenity_context).await.expect("[*] manager error ");
+
+
     let (conn,result) = manager.join(guild.id, channel_id).await;
     match result{
         Err(err) => { 
@@ -59,9 +65,6 @@ pub async fn play(ctx: poise::Context<'_, (), Error>, #[description= "url"] url:
         }
         Ok(_)=>{}
     }
-
-
-    
 
     // handling music
     println!("[*] Handling -> {url}");
@@ -84,7 +87,7 @@ pub async fn play(ctx: poise::Context<'_, (), Error>, #[description= "url"] url:
             source
         }
     };
-    let mut handle = conn.lock().await.enqueue_source(fsource);//.enqueue_source(fsource);//.enqueue_source(source);
+    let handle = conn.lock().await.enqueue_source(fsource);//.enqueue_source(fsource);//.enqueue_source(source);
     
     
     // let sleep = sleep(TD::from_secs(10));
@@ -97,7 +100,6 @@ pub async fn play(ctx: poise::Context<'_, (), Error>, #[description= "url"] url:
         EndLeaver { manager, guild_id },
     );
 
-    // handle.stop();
 	// handle.play_only_source(source);
     // handle.enqueue_source(source);
 
@@ -135,10 +137,47 @@ pub async fn play(ctx: poise::Context<'_, (), Error>, #[description= "url"] url:
 }
 
 
+#[poise::command(slash_command, reuse_response)]
+pub async fn skip(ctx: poise::Context<'_, (), Error>) -> Result<(), Error>{
+    let conn: Arc<Mutex<Call>> = get_conn(ctx).await.expect("can't grab conn");
+    let result = conn.lock().await.queue().skip();
+    match result {
+        Ok(_)  => {println!("[*] skip !!");ctx.say("skip").await.expect("[*] send message error");}
+        Err(_) => {println!("[*] skip error !");ctx.say("skip error").await.expect("[*] send message error");}
+    }
+    Ok(())
+}
+
+#[poise::command(slash_command, reuse_response)]
+pub async fn pause(ctx: poise::Context<'_, (), Error>) -> Result<(), Error>{
+    let conn = get_conn(ctx).await.expect("can't grab conn");
+    let result = conn.lock().await.queue().pause();
+    match result {
+        Ok(_)  => {println!("[*] Pause !!");ctx.say("pause").await.expect("[*] send message error");}
+        Err(_) => {println!("[*] Pause error !");ctx.say("pause error").await.expect("[*] send message error");}
+    }
+    Ok(())
+}
+
+
+#[poise::command(slash_command, reuse_response)]
+pub async fn resume(ctx: poise::Context<'_, (), Error>) -> Result<(), Error>{
+    let conn = get_conn(ctx).await.expect("can't grab conn");
+    let result = conn.lock().await.queue().resume();
+    match result {
+        Ok(_)  => {println!("[*] resume !!");ctx.say("resume").await.expect("[*] send message error");}
+        Err(_) => {println!("[*] resume error !");ctx.say("resume error").await.expect("[*] send message error");}
+    }
+    Ok(())
+}
+
+
+
 struct EndLeaver {
     pub manager: Arc<Songbird>,
     pub guild_id: GuildId,
 }
+
 
 #[async_trait]
 impl VoiceEventHandler for EndLeaver {
