@@ -75,62 +75,31 @@ pub async fn play(ctx: poise::Context<'_, (), Error>, #[description= "url"] url:
     let (source,music_path) = utils::build_songbird_source(url.clone()).await.unwrap();
     let metadata = source.metadata.clone();
 
-    // let source2 = utils::get_youtube_source(url).unwrap();
-    let source_result = sf(&music_path).await;
+    let fsource = source;
 
-    println!("[*] {music_path} exist : {}",Path::new(&music_path).exists());
-    let fsource = match source_result {
-        Ok(fsource) => {
-            println!("[*] use downloaded source!!");
-            fsource
-        }
-        Err(_) => {
-            println!("[*] use yt source!!");
-            source
-        }
-    };
-
-    // let rt = tokio::runtime::Builder::new_current_thread()
-    //     .enable_all()
-    //     .build()
-    //     .unwrap();
-
-
-    //: tokio::sync::MutexGuard<'_, Call> = conn.lock().await;// .queue().add_source(source, handler);
-    
-    //.enqueue_source(fsource);
-    //.enqueue_source(source);
-    
+    // let source_result = sf(&music_path).await;
+    // println!("[*] {music_path} exist : {}",Path::new(&music_path).exists());
+    // let fsource = match source_result {
+    //     Ok(_fsource) => {
+    //         println!("[*] use downloaded source!!");
+    //         source
+    //     }
+    //     Err(_) => {
+    //         println!("[*] use yt source!!");
+    //         source
+    //     }
+    // };
 
 
     tokio::spawn(async move{
         let _handle = conn.lock().await.enqueue_source(fsource);
-        // self.enqueue(track);
-        // handel.play(track);
-        unsafe {
-            info::FILE_TO_REMOVE.push(music_path);
-        }
     });
-
-
-    
-    // let sleep = sleep(TD::from_secs(10));
-    // tokio::pin!(sleep);
-    // sleep.as_mut().await;
 
 
     // let _ = handle.add_event(
     //     Event::Track(TrackEvent::End),
     //     EndLeaver { manager, guild_id },
     // );
-
-
-
-
-	// handle.play_only_source(source);
-    // handle.enqueue_source(source);
-
-    // handle.
 
     ctx.send(|r| {
         r.embed(|e| {
@@ -159,11 +128,10 @@ pub async fn play(ctx: poise::Context<'_, (), Error>, #[description= "url"] url:
     })
     .await.unwrap();
 
-
     Ok(())
 }
 
-
+/// Skip the current music
 #[poise::command(slash_command, reuse_response)]
 pub async fn skip(ctx: poise::Context<'_, (), Error>) -> Result<(), Error>{
     let conn: Arc<Mutex<Call>> = get_conn(ctx).await.expect("can't grab conn");
@@ -175,6 +143,8 @@ pub async fn skip(ctx: poise::Context<'_, (), Error>) -> Result<(), Error>{
     Ok(())
 }
 
+
+/// Pause the music
 #[poise::command(slash_command, reuse_response)]
 pub async fn pause(ctx: poise::Context<'_, (), Error>) -> Result<(), Error>{
     let conn = get_conn(ctx).await.expect("can't grab conn");
@@ -186,7 +156,7 @@ pub async fn pause(ctx: poise::Context<'_, (), Error>) -> Result<(), Error>{
     Ok(())
 }
 
-
+/// Resume the paused music
 #[poise::command(slash_command, reuse_response)]
 pub async fn resume(ctx: poise::Context<'_, (), Error>) -> Result<(), Error>{
     let conn = get_conn(ctx).await.expect("can't grab conn");
@@ -198,6 +168,62 @@ pub async fn resume(ctx: poise::Context<'_, (), Error>) -> Result<(), Error>{
     Ok(())
 }
 
+/// stop the current music and clear the playlist
+#[poise::command(slash_command, reuse_response)]
+pub async fn clear(ctx: poise::Context<'_, (), Error>) -> Result<(), Error>{
+    let conn: Arc<Mutex<Call>> = get_conn(ctx).await.expect("can't grab conn");
+    conn.lock().await.queue().stop();
+    println!("[*] stop !!");
+    ctx.say("stop").await.expect("[*] send message error");
+    Ok(())
+}
+
+#[poise::command(slash_command, reuse_response)]
+pub async fn list(ctx: poise::Context<'_, (), Error>) -> Result<(), Error>{
+    let conn: Arc<Mutex<Call>> = get_conn(ctx).await.expect("can't grab conn");
+    let connL = conn.lock().await;
+    let (current_channel, queue) =(connL.current_channel().unwrap(),connL.queue().current_queue());
+    ctx.send(|r| {
+        r.embed(|e| {
+            e.title(format!("Queue in <#{current_channel}>"));
+            if queue.is_empty() {
+                e.description("The queue is empty.");
+            } else {
+                let body = queue
+                    .iter()
+                    .map(|track: &tracks::TrackHandle| {
+                        let metadata: &songbird::input::Metadata = track.metadata();
+                        let binding = "<no_title>".to_string();
+                        println!("{:?}",metadata);
+                        let title = metadata.title.as_ref().unwrap_or(&binding);
+                        if let Some(source_url) = &track.metadata().source_url {
+                            format!("• [{title}]({source_url})")
+                        } else {
+                            format!("• {title}")    
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n");
+
+                e.description(body);
+
+                if let Some(thumbnail) = &queue
+                    .get(0)
+                    .expect("Queue is not empty right after checking")
+                    .metadata()
+                    .thumbnail
+                {
+                    e.thumbnail(thumbnail);
+                }
+            }
+
+            e
+        })
+    })
+    .await?;
+
+    Ok(())
+}
 
 
 struct EndLeaver {

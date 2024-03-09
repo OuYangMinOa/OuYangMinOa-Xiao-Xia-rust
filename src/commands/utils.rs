@@ -129,6 +129,18 @@ async fn build_songbird_ffmpeg_yt_dl_child(uri:&str) -> Result<(Child,Child),Err
     Ok((youtube_dl,ffmpeg))
 }
 
+async fn _build_ffmpeg_option(path:&String) ->Child{
+    let child = Command::new("ffmpeg")
+        .arg("-i")
+        .arg(path)
+        .args(build_ffmpeg_args())
+        .stderr(Stdio::null())
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .spawn().unwrap();
+    child
+}
+
 pub async fn build_songbird_source(uri:String) -> Result<(Input,String),Error>{
     println!("[*] Checking ... {uri}");
     // is a url
@@ -137,20 +149,31 @@ pub async fn build_songbird_source(uri:String) -> Result<(Input,String),Error>{
     let metaclone = this_meta.clone();
     let newurl = metaclone.source_url.unwrap();
     let thistitle = metaclone.title.unwrap() + format!("{}",Uuid::new_v4()).as_str(); // with same song title will cause the bot can't sing the same song in different guild
-    println!("{:?}",this_meta);
+    // println!("{:?}",this_meta);
     let save_path = format!("{MUSICPATH}/{thistitle}.opus");
     download_yt_source(&newurl, MUSICPATH,Some(thistitle)).await;
 
-    let youtube_dl;
-    let ffmpeg ;
-    (youtube_dl,ffmpeg) = build_songbird_ffmpeg_yt_dl_child(newurl.as_str()).await.unwrap();
-
-    // return Metadata::from_ytdl_output(value)
-    
+    /* 
+    let _youtube_dl;
+    let _ffmpeg ;
+    (_youtube_dl,_ffmpeg) = build_songbird_ffmpeg_yt_dl_child(newurl.as_str()).await.unwrap();
     Ok(
         (Input::new(
         true,
-        children_to_reader::<f32>(vec![youtube_dl, ffmpeg]),
+        children_to_reader::<f32>(vec![youtube_dl, ffmpeg]), //(vec![youtube_dl, ffmpeg]),
+        Codec::FloatPcm,
+        Container::Raw,
+        Some(this_meta))
+        ,save_path)
+    */
+
+
+    // return Metadata::from_ytdl_output(value)
+    let command = _build_ffmpeg_option(&save_path).await;
+    Ok(
+        (Input::new(
+        true,
+        children_to_reader::<f32>(vec![command]), //(vec![youtube_dl, ffmpeg]),
         Codec::FloatPcm,
         Container::Raw,
         Some(this_meta))

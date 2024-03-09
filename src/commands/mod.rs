@@ -13,5 +13,7 @@ pub fn get() -> Vec<Command<(), Error>>{
         music::skip(),
         music::pause(),
         music::resume(),
-    ]
+        music::clear(),
+        music::list(),
+        ]
 }
