@@ -1,15 +1,15 @@
+
 use crate::Error;
 use humantime::format_duration;
-use std::sync::Arc;
+use std::{fs, sync::Arc};
 use async_trait::async_trait;
 use std::path::Path;
+use crate::data::info;
 
 use crate::commands::utils;
 use poise::serenity_prelude::GuildId;
 use songbird::{
-    Call,
-    input::ffmpeg as sf,
-    Event, EventContext, EventHandler as VoiceEventHandler, Songbird, TrackEvent,
+    input::{ffmpeg as sf, Input}, tracks, Call, Event, EventContext, EventHandler as VoiceEventHandler, Songbird, TrackEvent
 };
 
 use tokio::sync::Mutex;
@@ -57,8 +57,10 @@ pub async fn play(ctx: poise::Context<'_, (), Error>, #[description= "url"] url:
     let serenity_context = ctx.serenity_context();
     let manager= songbird::get(serenity_context).await.expect("[*] manager error ");
 
+    // let (conn,result) = manager.join(guild_id, channel_id);
 
     let (conn,result) = manager.join(guild.id, channel_id).await;
+    
     match result{
         Err(err) => { 
             if err.should_leave_server() {println!("[*] Can't connect to server!!")}
@@ -87,18 +89,43 @@ pub async fn play(ctx: poise::Context<'_, (), Error>, #[description= "url"] url:
             source
         }
     };
-    let handle = conn.lock().await.enqueue_source(fsource);//.enqueue_source(fsource);//.enqueue_source(source);
+
+    // let rt = tokio::runtime::Builder::new_current_thread()
+    //     .enable_all()
+    //     .build()
+    //     .unwrap();
+
+
+    //: tokio::sync::MutexGuard<'_, Call> = conn.lock().await;// .queue().add_source(source, handler);
     
+    //.enqueue_source(fsource);
+    //.enqueue_source(source);
+    
+
+
+    tokio::spawn(async move{
+        let _handle = conn.lock().await.enqueue_source(fsource);
+        // self.enqueue(track);
+        // handel.play(track);
+        unsafe {
+            info::FILE_TO_REMOVE.push(music_path);
+        }
+    });
+
+
     
     // let sleep = sleep(TD::from_secs(10));
     // tokio::pin!(sleep);
     // sleep.as_mut().await;
 
 
-    let _ = handle.add_event(
-        Event::Track(TrackEvent::End),
-        EndLeaver { manager, guild_id },
-    );
+    // let _ = handle.add_event(
+    //     Event::Track(TrackEvent::End),
+    //     EndLeaver { manager, guild_id },
+    // );
+
+
+
 
 	// handle.play_only_source(source);
     // handle.enqueue_source(source);
@@ -174,22 +201,20 @@ pub async fn resume(ctx: poise::Context<'_, (), Error>) -> Result<(), Error>{
 
 
 struct EndLeaver {
-    pub manager: Arc<Songbird>,
-    pub guild_id: GuildId,
+    pub filename: String,
 }
+
+
+
 
 
 #[async_trait]
 impl VoiceEventHandler for EndLeaver {
     async fn act(&self, _ctx: &EventContext<'_>) -> Option<Event> {
-        if let Some(conn) = self.manager.get(self.guild_id) {
-            let should_remove = conn.lock().await.queue().is_empty();
-            if should_remove {
-                if let Err(err) = self.manager.remove(self.guild_id).await {
-                    eprintln!("Failed to leave after track end: {err}");
-                }
-            }
+        unsafe {
+            info::FILE_TO_REMOVE.push(self.filename.clone());
         }
+        // fs::remove_file(&).expect("[*] file can't delete.");
         None
     }
 }

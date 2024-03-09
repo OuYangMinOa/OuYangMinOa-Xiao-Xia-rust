@@ -4,7 +4,7 @@ use std::{process::Stdio, time::Duration};
 use songbird::input::{children_to_reader, Codec, Container, Input, Metadata};
 use songbird::input::error::Error;
 use std::process::{Child, Command};
-
+use uuid::Uuid;
 
 use crate::data::info::MUSICPATH;
 
@@ -136,7 +136,7 @@ pub async fn build_songbird_source(uri:String) -> Result<(Input,String),Error>{
     let this_meta: Metadata = build_metadata_from_source(source);
     let metaclone = this_meta.clone();
     let newurl = metaclone.source_url.unwrap();
-    let thistitle = metaclone.title.unwrap();
+    let thistitle = metaclone.title.unwrap() + format!("{}",Uuid::new_v4()).as_str(); // with same song title will cause the bot can't sing the same song in different guild
     println!("{:?}",this_meta);
     let save_path = format!("{MUSICPATH}/{thistitle}.opus");
     download_yt_source(&newurl, MUSICPATH,Some(thistitle)).await;
