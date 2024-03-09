@@ -1,17 +1,12 @@
 
 use crate::Error;
-use humantime::format_duration;
-use std::{fs, sync::Arc};
-use async_trait::async_trait;
-use std::path::Path;
 use crate::data::info;
-
 use crate::commands::utils;
-use poise::serenity_prelude::GuildId;
-use songbird::{
-    input::{ffmpeg as sf, Input}, tracks, Call, Event, EventContext, EventHandler as VoiceEventHandler, Songbird, TrackEvent
-};
 
+use url::Url;
+use std::sync::Arc;
+use async_trait::async_trait;
+use songbird::{tracks, Call, Event, EventContext, EventHandler as VoiceEventHandler};
 use tokio::sync::Mutex;
 
 
@@ -24,8 +19,7 @@ pub async fn get_conn(ctx: poise::Context<'_, (), Error>) -> Result<Arc<Mutex<Ca
 
 /// Play music with given url.
 #[poise::command(slash_command, reuse_response)]
-pub async fn play(ctx: poise::Context<'_, (), Error>, #[description= "url"] url:String) -> Result<(), Error> {
-
+pub async fn play(ctx: poise::Context<'_, (), Error>, #[description= "url"] uri:String) -> Result<(), Error> {
     ctx.defer().await?;
     let guild   = ctx.guild().expect("[*] Grabbing guild error").clone();
     let userid = ctx.author().id;
@@ -36,21 +30,16 @@ pub async fn play(ctx: poise::Context<'_, (), Error>, #[description= "url"] url:
     match voice_state_option {
         Some(this) => {voice_state = this;}
         None => {
-
-            ctx.send(|m|
-                m.embed(
-                    |e| e.title("Error").description("You are not in a voice channel")
-                ).ephemeral(true)
+            ctx.send(|m|m.embed(
+                     |e| e.title("Error").description("You are not in a voice channel")
+                    ).ephemeral(true)
             ).await.unwrap();
             return Ok(());
         }
     }
-
-
     // grab chennel_id and guild_id
     let channel_id = voice_state.channel_id.expect("[*] Grabbing channel_id error");
     let guild_id = ctx.guild_id().expect("[*] Grabbing guild_id error");
-
 
     println!("guild : {}, channel : {}, User : {}",guild_id,channel_id,userid);
     // ;
@@ -69,65 +58,25 @@ pub async fn play(ctx: poise::Context<'_, (), Error>, #[description= "url"] url:
     }
 
     // handling music
-    println!("[*] Handling -> {url}");
+    println!("[*] Handling -> {uri}");
 
-    
-    let (source,music_path) = utils::build_songbird_source(url.clone()).await.unwrap();
-    let metadata = source.metadata.clone();
-
-    let fsource = source;
-
-    // let source_result = sf(&music_path).await;
-    // println!("[*] {music_path} exist : {}",Path::new(&music_path).exists());
-    // let fsource = match source_result {
-    //     Ok(_fsource) => {
-    //         println!("[*] use downloaded source!!");
-    //         source
-    //     }
-    //     Err(_) => {
-    //         println!("[*] use yt source!!");
-    //         source
-    //     }
-    // };
-
-
-    tokio::spawn(async move{
-        let _handle = conn.lock().await.enqueue_source(fsource);
-    });
-
-
-    // let _ = handle.add_event(
-    //     Event::Track(TrackEvent::End),
-    //     EndLeaver { manager, guild_id },
-    // );
-
-    ctx.send(|r| {
-        r.embed(|e| {
-            e.title(format!("Queueing audio in <#{channel_id}>"));
-
-            if let Some(title) = &metadata.title {
-                e.field("Title", title, false);
-            } else if let Some(track) = &metadata.track {
-                e.field("Title", track, false);
+    match Url::parse(&uri){
+        Ok(_) =>{ // is a url
+            if uri.contains("list"){  // is as play list
+                println!("[*] is a play list");
+                utils::handle_list_url(ctx, &uri, conn).await;
             }
+            else {  // single song
+                println!("[*] is a single song");
+                utils::handle_single_video(ctx, &uri, conn).await;
 
-            if let Some(duration) = &metadata.duration {
-                e.field("Duration", format_duration(*duration), true);
             }
-
-            if let Some(source_url) = &metadata.source_url {
-                e.field("Source", format!("[Open original]({source_url})"), true);
-            }
-
-            if let Some(thumbnail) = &metadata.thumbnail {
-                e.thumbnail(thumbnail);
-            }
-
-            e
-        })
-    })
-    .await.unwrap();
-
+        }
+        Err(_) => { // not a url
+            println!("[*] is not a url");
+            utils::handle_single_video(ctx, &uri, conn).await;
+        }
+    }
     Ok(())
 }
 
@@ -181,8 +130,8 @@ pub async fn clear(ctx: poise::Context<'_, (), Error>) -> Result<(), Error>{
 #[poise::command(slash_command, reuse_response)]
 pub async fn list(ctx: poise::Context<'_, (), Error>) -> Result<(), Error>{
     let conn: Arc<Mutex<Call>> = get_conn(ctx).await.expect("can't grab conn");
-    let connL = conn.lock().await;
-    let (current_channel, queue) =(connL.current_channel().unwrap(),connL.queue().current_queue());
+    let conn_locked = conn.lock().await;
+    let (current_channel, queue) =(conn_locked.current_channel().unwrap(),conn_locked.queue().current_queue());
     ctx.send(|r| {
         r.embed(|e| {
             e.title(format!("Queue in <#{current_channel}>"));

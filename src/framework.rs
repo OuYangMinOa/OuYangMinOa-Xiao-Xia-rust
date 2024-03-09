@@ -23,4 +23,5 @@ pub fn build(token: &str, guild_id: GuildId) -> FrameworkBuilder<(), Error> {
                 Ok(())
             })
         })
+        
 }
