@@ -1,35 +1,18 @@
 
-use humantime::format_duration;
-use songbird::Call;
-use tokio::sync::Mutex;
-use youtube_dl::{SearchOptions, SingleVideo, YoutubeDl};
-use url::Url;
-use std::sync::Arc;
-use std::{process::Stdio, time::Duration};
-use songbird::input::{children_to_reader, Codec, Container, Input, Metadata};
-// use songbird::input::error::Error;
-use std::process::{Child, Command};
-use uuid::Uuid;
 use crate::Error;
-
-
 use crate::data::info::MUSICPATH;
-#[allow(unused)]
-fn build_ytdlp_args(query:&str) -> [&str;11]{
-    [
-    "--print-json",
-    "-f",
-    "webm[abr>0]/bestaudio/best",
-    "-R",
-    "infinite",
-    "--no-playlist",
-    "--ignore-config",
-    "--no-warnings",
-    query,
-    "-o",
-    "-",
-    ]
-}
+
+use url::Url;
+use uuid::Uuid;
+use songbird::Call;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use humantime::format_duration;
+use std::process::{Child, Command};
+use std::{process::Stdio, time::Duration};
+use youtube_dl::{SearchOptions, SingleVideo, YoutubeDl};
+use songbird::input::{children_to_reader, Codec, Container, Input, Metadata};
+
 
 fn build_ffmpeg_args() -> [&'static str;9] {
     [
@@ -125,8 +108,11 @@ async fn _build_ffmpeg_option(path:&String) ->Child{
     child
 }
 
+
+/// Grab the yt list with url
+/// start and end corresponding to the range of the yt playlist
 async fn grab_yt_list(url:&String,start:u8,end:u8) -> Vec<SingleVideo>{
-    let result: Vec<SingleVideo> = YoutubeDl::new(url)
+    YoutubeDl::new(url)
             .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
             .socket_timeout("30")
             .process_timeout(Duration::new(30,0))
@@ -138,8 +124,7 @@ async fn grab_yt_list(url:&String,start:u8,end:u8) -> Vec<SingleVideo>{
             .into_playlist()
             .unwrap()
             .entries
-            .unwrap();
-        result
+            .unwrap()
 }
 
 async fn build_input_vec_with_single_video_vec(play_list:&Vec<SingleVideo>) -> Vec<Input>{
@@ -166,8 +151,8 @@ async fn build_input_vec_with_single_video_vec(play_list:&Vec<SingleVideo>) -> V
 }
 
 
-/// grab the youtbe source and build the input use for song bird
-/// then download the video in thrread.
+/// grab the youtube source and build the input use for song bird
+/// first handle 3 video then 4 to 50
 pub async fn handle_list_url(ctx:poise::Context<'_, (), Error>,uri:&String,conn:Arc<Mutex<Call>>){
     let source_yt_first: Vec<SingleVideo> = grab_yt_list(uri,1,3).await;
 
@@ -189,7 +174,7 @@ pub async fn handle_list_url(ctx:poise::Context<'_, (), Error>,uri:&String,conn:
         })
     }).await.unwrap();
 
-    // download the first ten video
+    // download and add to queue
     for this_input in build_input_vec_with_single_video_vec(&source_yt_first).await{
         conn_locked.enqueue_source(this_input);
     }
@@ -306,3 +291,19 @@ pub async fn build_songbird_source(uri:String) -> Result<(Input,String),Error>{
     )
 }
 
+#[allow(unused)]
+fn build_ytdlp_args(query:&str) -> [&str;11]{
+    [
+    "--print-json",
+    "-f",
+    "webm[abr>0]/bestaudio/best",
+    "-R",
+    "infinite",
+    "--no-playlist",
+    "--ignore-config",
+    "--no-warnings",
+    query,
+    "-o",
+    "-",
+    ]
+}

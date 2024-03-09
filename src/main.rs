@@ -1,17 +1,14 @@
 #[macro_use]
 extern crate dotenv_codegen;
 
-
-
+mod data;
 mod commands;
 mod framework;
-mod data;
 
 use ctrlc;
 use glob::glob;
-use std::{fs, process::exit};
-
 use data::info::MUSICPATH;
+use std::{fs, process::exit};
 use poise::serenity_prelude as serenity;
 
 
