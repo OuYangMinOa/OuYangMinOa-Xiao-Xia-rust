@@ -6,21 +6,21 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-glob = "0.3.1"
+url = "*"
 ctrlc = "3.4"
-async-sleep="0.4.1"
-dotenv_codegen="0.15.0"
-poise="0.5.2"
-serenity = { features = [ "voice","model"], version = "^0.11.0", default-features = false }
+reqwest = "*"
+glob = "0.3.1"
+poise = "0.5.2"
+humantime = "*"
+serde_json = "*"
+async-trait = "*"
+async-sleep = "0.4.1"
+dotenv_codegen = "0.15.0"
+clap = { version = "4.5.2", features = ["derive"] }
+youtube_dl = { version="0.9.0" , features=["tokio"]}
 songbird = { version = "0.3.2", features = [ "builtin-queue"] }
 tokio = { version = "1.27.0", features = ["macros", "rt-multi-thread", "sync", "time"] }
-async-trait="*"
-humantime="*"
-url="*"
-
-youtube_dl ={ version="0.9.0" , features=["tokio"]}
-serde_json="*"
-clap = { version = "4.5.2", features = ["derive"] }
+serenity = { features = [ "voice","model"], version = "^0.11.0", default-features = false }
 
 
 [package.metadata.docs.rs]

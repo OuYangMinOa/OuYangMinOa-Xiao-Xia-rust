@@ -1,11 +1,11 @@
 use crate::commands::utils;
-use crate::data::info;
+use crate::refer::info;
 use crate::Error;
 
-use async_trait::async_trait;
 use songbird::{tracks, Call, Event, EventContext, EventHandler as VoiceEventHandler};
-use std::sync::Arc;
+use async_trait::async_trait;
 use tokio::sync::Mutex;
+use std::sync::Arc;
 use url::Url;
 
 pub async fn get_conn(ctx: poise::Context<'_, (), Error>) -> Result<Arc<Mutex<Call>>, Error> {
@@ -54,7 +54,7 @@ pub async fn play(
     let guild_id = ctx.guild_id().expect("[*] Grabbing guild_id error");
 
     println!(
-        "guild : {}, channel : {}, User : {}",
+        "[*] guild : {} => channel : {} => User : {}",
         guild_id, channel_id, userid
     );
     // ;

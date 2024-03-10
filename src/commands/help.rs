@@ -1,7 +1,7 @@
 use crate::Error;
 // use serenity::utils::Colour;
 
-use crate::data::lang::{SuppportLanguage, ENLANGMAP, TWLANGMAP};
+use crate::refer::lang::{SuppportLanguage, ENLANGMAP, TWLANGMAP};
 
 /// Show help command with specific language
 #[poise::command(slash_command)]
@@ -19,3 +19,4 @@ pub async fn help(
     }
     Ok(())
 }
+

@@ -1,6 +1,8 @@
 pub mod help;
 pub mod music;
 pub mod utils;
+pub mod client;
+pub mod event;
 
 use crate::Error;
 use poise::Command;

@@ -1,9 +1,9 @@
 use crate::Error;
-use crate::data::info::MUSICPATH;
+use crate::refer::info::MUSICPATH;
 
 use uuid::Uuid;
-use std::sync::Arc;
 use songbird::Call;
+use std::sync::Arc;
 use tokio::sync::Mutex;
 use humantime::format_duration;
 use std::process::{Child, Command};
@@ -81,7 +81,6 @@ async fn build_youtubedl_source(uri: String) -> SingleVideo {
             .process_timeout(Duration::new(30,0))
             .socket_timeout("120")
             .extract_audio(true)
-            // .run()
             .run_async()
             .await
             .unwrap()
@@ -90,19 +89,24 @@ async fn build_youtubedl_source(uri: String) -> SingleVideo {
 }
 
 pub async fn search_yt_keyword(keyword:String) -> Vec<SingleVideo> {
-    YoutubeDl::search_for(&SearchOptions::youtube(&keyword))
-            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
-            .process_timeout(Duration::new(30,0))
-            .socket_timeout("120")
-            .extra_arg("-I")
-            .extra_arg(format!("1"))
-            .run_async()
-            .await
-            .expect("Error")
-            .into_playlist()
-            .unwrap()
+    let keyword_playlist =YoutubeDl::search_for(&SearchOptions::youtube(&keyword))
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
+        .socket_timeout("30")
+        .process_timeout(Duration::new(30,0))
+        .extra_arg("-I")
+        .extra_arg(format!("1:1"))
+        .run_async()
+        .await
+        .expect("Error")
+        .into_playlist();
+
+        match keyword_playlist{
+            Some(play_list) =>{play_list
             .entries
             .unwrap()
+            },
+            None =>{ Vec::new()}
+        }
 }
 
 
@@ -122,7 +126,7 @@ async fn _build_ffmpeg_option(path: &String) -> Child {
 /// Grab the yt list with url
 /// start and end corresponding to the range of the yt playlist
 async fn grab_yt_list(url: &String, start: u8, end: u8) -> Vec<SingleVideo> {
-    YoutubeDl::new(url)
+    let this_play_list = YoutubeDl::new(url)
             .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
             .socket_timeout("30")
             .process_timeout(Duration::new(30,0))
@@ -131,10 +135,15 @@ async fn grab_yt_list(url: &String, start: u8, end: u8) -> Vec<SingleVideo> {
             .run_async()
             .await
             .expect("Error")
-            .into_playlist()
-            .unwrap()
+            .into_playlist();
+
+    match this_play_list{
+        Some(play_list) =>{play_list
             .entries
             .unwrap()
+        },
+        None =>{ Vec::new()}
+    }
 }
 
 async fn build_input_vec_with_single_video_vec(play_list: &Vec<SingleVideo>) -> Vec<Input> {
@@ -173,6 +182,12 @@ pub async fn handle_list_url(
 ) {
     let source_yt_first: Vec<SingleVideo> = grab_yt_list(uri, 1, 3).await;
 
+    if source_yt_first.len() == 0 {
+        println!("No video found");
+        ctx.say("No video found").await.unwrap();
+        return;
+    }
+
     let mut conn_locked: tokio::sync::MutexGuard<'_, Call> = conn.lock().await;
     let (current_channel, _) = (
         conn_locked.current_channel().unwrap(),
@@ -181,6 +196,8 @@ pub async fn handle_list_url(
 
     // download and add to queue
     let list_vec =  build_input_vec_with_single_video_vec(&source_yt_first).await;
+
+    
 
     ctx.send(|r| {
         r.embed(|e| {
@@ -278,6 +295,12 @@ pub async fn handle_none_url(
 ){
     let source_yt_first: Vec<SingleVideo> = search_yt_keyword(uri.to_string()).await;
 
+    if source_yt_first.len() == 0 {
+        println!("No video found");
+        ctx.say("No video found").await.unwrap();
+        return;
+    }
+
     let mut conn_locked = conn.lock().await;
     let (current_channel, _) = (
         conn_locked.current_channel().unwrap(),
@@ -286,6 +309,8 @@ pub async fn handle_none_url(
 
     let single_video = source_yt_first.clone();
     let metadata = build_metadata_from_source(single_video.into_iter().next().unwrap());
+
+    
 
     ctx.send(|r| {
         r.embed(|e| {

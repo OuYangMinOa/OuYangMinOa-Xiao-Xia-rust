@@ -1,18 +1,24 @@
 #[macro_use]
 extern crate dotenv_codegen;
 
-mod data;
+mod refer;
 mod commands;
 mod framework;
 
 use ctrlc;
 use glob::glob;
 use clap::Parser;
-use data::info::MUSICPATH;
+use refer::info::MUSICPATH;
 use std::{fs, process::exit};
 use poise::serenity_prelude as serenity;
 
-/// Search for a pattern in a file and display the lines that contain it.
+
+// pub enum MYERR{
+//     Error(Box<dyn std::error::Error + Send + Sync>),
+//     Empty()
+// }
+
+
 type Error = Box<dyn std::error::Error + Send + Sync>;
 
 #[derive(Parser)]
@@ -28,6 +34,7 @@ struct Args {
     guildid: Option<u64>,
 }
 
+// serenity::event::EventType.
 
 // remove the song file when the program end
 pub fn remove_file() {
@@ -40,7 +47,9 @@ pub fn remove_file() {
             Err(e) => println!("{:?}", e),
         }
     }
-}
+}       
+// serenity::ReadyEvent 
+
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
