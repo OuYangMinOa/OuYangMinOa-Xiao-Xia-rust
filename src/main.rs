@@ -7,15 +7,30 @@ mod framework;
 
 use ctrlc;
 use glob::glob;
+use clap::Parser;
 use data::info::MUSICPATH;
 use std::{fs, process::exit};
 use poise::serenity_prelude as serenity;
 
+/// Search for a pattern in a file and display the lines that contain it.
 type Error = Box<dyn std::error::Error + Send + Sync>;
+
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// The discord token
+    #[arg(short, long)]
+    discordtoken: Option<String>,
+
+
+    /// The guild id for testing
+    #[arg(short, long)]
+    guildid: Option<u64>,
+}
+
 
 // remove the song file when the program end
 pub fn remove_file() {
-    println!("[*] Removing ...");
     for entry in glob(format!("{MUSICPATH}/*.*").as_str()).expect("Failed to read glob pattern") {
         match entry {
             Ok(path) => match fs::remove_file(&path) {
@@ -30,11 +45,12 @@ pub fn remove_file() {
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     // dotenv!("DISCORD_TOKEN")
+    let args = Args::parse();
+    let discord_token = args.discordtoken.unwrap_or(dotenv!("DISCORD_TOKEN").to_string());
+    let private_server = args.guildid.unwrap_or(dotenv!("TEST_GUILD_ID").parse::<u64>().expect("Can't use private server"));
 
     println!("[*] Waiting for server ready ... ");
-    let private_server: u64 = dotenv!("TEST_GUILD_ID")
-        .parse::<u64>()
-        .expect("Can't use private server");
+
     let privateguidid: serenity::GuildId = serenity::GuildId(private_server);
 
     remove_file();
@@ -44,9 +60,9 @@ async fn main() {
     })
     .expect("Error setting Ctrl-C handler");
 
-    let discord_token = dotenv!("DISCORD_TOKEN");
+    
 
-    framework::build(discord_token, privateguidid)
+    framework::build(&discord_token, privateguidid)
         .run()
         .await
         .expect("[*] Server open fail");

@@ -83,18 +83,18 @@ pub async fn play(
             // is a url
             if uri.contains("list") {
                 // is as play list
-                println!("[*] is a play list");
+                println!("[*] Play list found");
                 
                 utils::handle_list_url(ctx, &uri,conn).await;
             } else {
                 // single song
-                println!("[*] is a single song");
+                println!("[*] Single song found");
                 utils::handle_single_video(ctx, &uri, conn).await;
             }
         }
         Err(_) => {
             // not a url
-            println!("[*] is not a url");
+            println!("[*] Not a url");
             utils::handle_none_url(ctx, &uri, conn).await;
         }
     }
