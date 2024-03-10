@@ -1,11 +1,9 @@
-use crate::Error;
 use crate::commands;
+use crate::Error;
 
-
-use songbird::SerenityInit;
 use poise::FrameworkBuilder;
 use serenity::model::{gateway::GatewayIntents, id::GuildId};
-
+use songbird::SerenityInit;
 
 pub fn build(token: &str, guild_id: GuildId) -> FrameworkBuilder<(), Error> {
     poise::Framework::builder()
@@ -13,9 +11,7 @@ pub fn build(token: &str, guild_id: GuildId) -> FrameworkBuilder<(), Error> {
             commands: commands::get(),
             ..Default::default()
         })
-        .intents(
-            GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT,
-        )
+        .intents(GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT)
         .token(token)
         .client_settings(|c| c.register_songbird())
         .setup(move |ctx, _ready, framework| {
@@ -25,5 +21,4 @@ pub fn build(token: &str, guild_id: GuildId) -> FrameworkBuilder<(), Error> {
                 Ok(())
             })
         })
-        
 }

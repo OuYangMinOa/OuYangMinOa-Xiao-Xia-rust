@@ -6,7 +6,7 @@ use crate::Error;
 use poise::Command;
 // use crate::framework::Data;
 
-pub fn get() -> Vec<Command<(), Error>>{
+pub fn get() -> Vec<Command<(), Error>> {
     vec![
         help::help(),
         music::play(),
@@ -15,5 +15,5 @@ pub fn get() -> Vec<Command<(), Error>>{
         music::resume(),
         music::clear(),
         music::list(),
-        ]
+    ]
 }

@@ -384,7 +384,6 @@ dependencies = [
  "dotenv_codegen",
  "glob",
  "humantime",
- "libc",
  "poise",
  "serde_json",
  "serenity",
