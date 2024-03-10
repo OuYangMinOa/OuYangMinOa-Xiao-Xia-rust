@@ -10,6 +10,11 @@
 
 Trying to rebuild <a herf="https://github.com/OuYangMinOa/Xiao-Xia">Xiao-Xia</a> with rust 
 
+## Progress
+
+1. Music Bot
+
+
 ## 🚀 Deploying your own bot <a name = "deployment"></a>
 
 If you want to build your own bot, the bot is develop base on rust. rust is require for installation, ffmpeg for audio procession and yt-dlp for youtube video downloading. Here are the procedure to run Xiao-xia with rust locally.
