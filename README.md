@@ -41,4 +41,9 @@ If you want to build your own bot, the bot is develop base on rust. rust is requ
     cargo check
     cargo run
     ```
+4. Run with docker
 
+    ```
+    docker build -t xiao-xia-rust .
+    docker run -d xiao-xia-rust
+    ```
